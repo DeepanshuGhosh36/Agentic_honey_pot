@@ -3,20 +3,28 @@ import re
 BANK_REGEX = r"\b\d{9,18}\b"
 UPI_REGEX = r"\b[\w.-]+@[\w]+\b"
 URL_REGEX = r"https?://[^\s]+"
+PHONE_REGEX = r"\b\+?\d{10,13}\b"
 
-def extract_intelligence(messages):
-    bank_accounts = set()
-    upi_ids = set()
-    urls = set()
+SUSPICIOUS_KEYWORDS = ["urgent", "verify", "blocked", "suspended", "account", "upi", "click"]
 
-    for msg in messages:
-        text = msg.content
-        bank_accounts.update(re.findall(BANK_REGEX, text))
-        upi_ids.update(re.findall(UPI_REGEX, text))
+def extract_intelligence(conversation):
+    banks, upis, urls, phones, keywords = set(), set(), set(), set(), set()
+
+    for msg in conversation:
+        text = msg.get("text", "")
+        banks.update(re.findall(BANK_REGEX, text))
+        upis.update(re.findall(UPI_REGEX, text))
         urls.update(re.findall(URL_REGEX, text))
+        phones.update(re.findall(PHONE_REGEX, text))
+
+        for kw in SUSPICIOUS_KEYWORDS:
+            if kw in text.lower():
+                keywords.add(kw)
 
     return {
-        "bank_accounts": list(bank_accounts),
-        "upi_ids": list(upi_ids),
-        "phishing_urls": list(urls)
+        "bankAccounts": list(banks),
+        "upiIds": list(upis),
+        "phishingLinks": list(urls),
+        "phoneNumbers": list(phones),
+        "suspiciousKeywords": list(keywords)
     }
