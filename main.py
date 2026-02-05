@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Request
+import threading
 import requests
 
 from auth import verify_api_key
@@ -11,6 +12,16 @@ app = FastAPI(title="Agentic HoneyPot API")
 
 FINAL_CALLBACK_URL = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
 
+@app.get("/")
+def health():
+    return {"status": "ok"}
+
+def send_final_callback_async(payload):
+    try:
+        requests.post(FINAL_CALLBACK_URL, json=payload, timeout=3)
+    except:
+        pass
+
 @app.post("/scam-detection")
 async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)):
     try:
@@ -19,8 +30,8 @@ async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)
         return {"status": "error", "reply": ""}
 
     session_id = body.get("sessionId", "unknown")
-    message = body.get("message", {})
-    history = body.get("conversationHistory", [])
+    message = body.get("message", {}) or {}
+    history = body.get("conversationHistory", []) or []
 
     conversation = build_conversation(history, message)
 
@@ -31,10 +42,9 @@ async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)
     else:
         reply = "Could you please explain more?"
 
-    # Extract intelligence across turns
     intelligence = extract_intelligence(conversation)
 
-    # If scam detected AND sufficient engagement (>=3 turns), send final callback
+
     if scam_detected and len(conversation) >= 3:
         payload = {
             "sessionId": session_id,
@@ -43,17 +53,14 @@ async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)
             "extractedIntelligence": intelligence,
             "agentNotes": "Urgency tactics and payment redirection observed"
         }
+        threading.Thread(target=send_final_callback_async, args=(payload,), daemon=True).start()
 
-        try:
-            requests.post(FINAL_CALLBACK_URL, json=payload, timeout=5)
-        except:
-            pass 
-
-   
+  
     return {
         "status": "success",
         "reply": reply
     }
+
 
 
 
