@@ -1,6 +1,7 @@
+import os
 from fastapi import Header, HTTPException
 
-API_KEY = "YOUR_SECRET_API_KEY"
+API_KEY = os.getenv("API_KEY", "CHANGE_ME")
 
 def verify_api_key(x_api_key: str = Header(...)):
     if x_api_key != API_KEY:
