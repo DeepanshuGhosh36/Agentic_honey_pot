@@ -3,7 +3,7 @@ from auth import verify_api_key
 from detector import detect_scam
 from agent import generate_agent_reply
 from extractor import extract_intelligence
-
+app = FastAPI(title="Agentic HoneyPot API")
 @app.post("/scam-detection")
 async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)):
 
