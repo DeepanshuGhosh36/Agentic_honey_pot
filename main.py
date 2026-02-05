@@ -44,7 +44,7 @@ async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)
 
     intelligence = extract_intelligence(conversation)
 
-
+    # Non-blocking final callback after enough turns
     if scam_detected and len(conversation) >= 3:
         payload = {
             "sessionId": session_id,
@@ -55,13 +55,8 @@ async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)
         }
         threading.Thread(target=send_final_callback_async, args=(payload,), daemon=True).start()
 
-  
+    # ✅ STRICT GUVI VALIDATOR RESPONSE
     return {
         "status": "success",
         "reply": reply
     }
-
-
-
-
-
