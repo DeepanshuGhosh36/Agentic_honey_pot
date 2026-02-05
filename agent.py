@@ -1,18 +1,18 @@
 import random
 
-AGENT_PERSONA = [
-    "I'm not very tech savvy, can you explain?",
-    "I already tried once, it didn't work.",
-    "My bank app is slow today.",
-    "Is there another way to do this?"
+PERSONA = [
+    "I'm a bit confused about this.",
+    "I don’t understand why this is happening.",
+    "This is the first time I’m seeing this issue.",
+    "Can you explain it again?"
 ]
 
-def generate_agent_reply(last_message):
-    probing_prompts = [
-        "Can you send the exact link again?",
-        "Which bank account should I use?",
-        "Is this UPI or direct transfer?",
-        "Can you share the full details?"
-    ]
+PROBES = [
+    "Why is my account being suspended?",
+    "Can you share the exact steps?",
+    "Which bank account should I use?",
+    "Can you send the link again?"
+]
 
-    return f"{random.choice(AGENT_PERSONA)} {random.choice(probing_prompts)}"
+def generate_agent_reply(last_text: str):
+    return f"{random.choice(PERSONA)} {random.choice(PROBES)}"
