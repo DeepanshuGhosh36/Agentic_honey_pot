@@ -1,55 +1,60 @@
 from fastapi import FastAPI, Depends, Request
+import requests
+
 from auth import verify_api_key
-from detector import detect_scam
+from detector import detect_scam_from_guvi_format
 from agent import generate_agent_reply
 from extractor import extract_intelligence
+from memory import build_conversation
+
 app = FastAPI(title="Agentic HoneyPot API")
+
+FINAL_CALLBACK_URL = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
+
 @app.post("/scam-detection")
 async def scam_endpoint(request: Request, api_key: str = Depends(verify_api_key)):
-
     try:
         body = await request.json()
     except:
-        body = {}
+        return {"status": "error", "reply": ""}
 
-    messages = body.get("messages", [])
+    session_id = body.get("sessionId", "unknown")
+    message = body.get("message", {})
+    history = body.get("conversationHistory", [])
 
-    normalized_messages = []
-    for msg in messages:
-        if isinstance(msg, dict):
-            normalized_messages.append(
-                type("Msg", (), {
-                    "role": msg.get("role", "scammer"),
-                    "content": msg.get("content", "")
-                })()
-            )
+    conversation = build_conversation(history, message)
 
-    scam_detected = detect_scam(normalized_messages)
+    scam_detected = detect_scam_from_guvi_format(conversation)
 
-    agent_reply = ""
     if scam_detected:
-        agent_reply = generate_agent_reply(
-            normalized_messages[-1].content if normalized_messages else ""
-        )
+        reply = generate_agent_reply(message.get("text", ""))
+    else:
+        reply = "Could you please explain more?"
 
-    intelligence = extract_intelligence(normalized_messages)
+    # Extract intelligence across turns
+    intelligence = extract_intelligence(conversation)
 
-    return {
-        "scam_detected": bool(scam_detected),
-        "agent_activated": bool(scam_detected),
-        "agent_reply": agent_reply,
-        "engagement_metrics": {
-            "conversation_turns": len(normalized_messages),
-            "scammer_messages": len(
-                [m for m in normalized_messages if m.role == "scammer"]
-            )
-        },
-        "extracted_intelligence": {
-            "bank_accounts": intelligence.get("bank_accounts", []),
-            "upi_ids": intelligence.get("upi_ids", []),
-            "phishing_urls": intelligence.get("phishing_urls", [])
+    # If scam detected AND sufficient engagement (>=3 turns), send final callback
+    if scam_detected and len(conversation) >= 3:
+        payload = {
+            "sessionId": session_id,
+            "scamDetected": True,
+            "totalMessagesExchanged": len(conversation),
+            "extractedIntelligence": intelligence,
+            "agentNotes": "Urgency tactics and payment redirection observed"
         }
+
+        try:
+            requests.post(FINAL_CALLBACK_URL, json=payload, timeout=5)
+        except:
+            pass 
+
+   
+    return {
+        "status": "success",
+        "reply": reply
     }
+
 
 
 
